@@ -5,6 +5,11 @@ All notable changes to tanmatra will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- `AtomicInstant::duration_since` no longer overflows for instants spanning the full signed seconds range; nearby nanosecond differences retain their precision.
+
 ## [1.2.0]
 
 ### Added
