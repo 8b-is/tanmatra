@@ -369,9 +369,14 @@ impl AtomicInstant {
     /// If `earlier` is actually later than `self`, the result will be negative.
     #[must_use]
     pub fn duration_since(&self, earlier: &Self) -> f64 {
-        let dsec = self.seconds - earlier.seconds;
+        // Subtract before converting to preserve nearby instants at large epochs.
+        // The full i64 instant range needs an i128 difference on overflow.
+        let dsec = match self.seconds.checked_sub(earlier.seconds) {
+            Some(seconds) => seconds as f64,
+            None => (i128::from(self.seconds) - i128::from(earlier.seconds)) as f64,
+        };
         let dnanos = self.nanos as i64 - earlier.nanos as i64;
-        dsec as f64 + dnanos as f64 / NANOS_PER_SEC
+        dsec + dnanos as f64 / NANOS_PER_SEC
     }
 
     /// Returns a new instant advanced by `dt` seconds.
@@ -775,6 +780,21 @@ mod tests {
         let t2 = AtomicInstant::new(100, 0);
         let dt = t2.duration_since(&t1);
         assert!((dt - (-100.0)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn atomic_instant_duration_extreme_range() {
+        let first = AtomicInstant::new(i64::MIN, 0);
+        let last = AtomicInstant::new(i64::MAX, 0);
+        let span = (i128::from(i64::MAX) - i128::from(i64::MIN)) as f64;
+        assert_eq!(last.duration_since(&first), span);
+        assert_eq!(first.duration_since(&last), -span);
+        for second in [i64::MIN, i64::MAX] {
+            let a = AtomicInstant::new(second, 1);
+            let b = AtomicInstant::new(second, 2);
+            assert_eq!(b.duration_since(&a), 1e-9);
+            assert_eq!(a.duration_since(&b), -1e-9);
+        }
     }
 
     #[test]

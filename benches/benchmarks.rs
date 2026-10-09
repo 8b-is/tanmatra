@@ -123,8 +123,17 @@ fn known_isotopes_alloc(c: &mut Criterion) {
     });
 }
 
+fn atomic_duration(c: &mut Criterion) {
+    let earlier = tanmatra::timekeeping::AtomicInstant::new(1_700_000_000, 250_000_000);
+    let later = tanmatra::timekeeping::AtomicInstant::new(1_700_000_100, 750_000_000);
+    c.bench_function("timekeeping/duration_since", |b| {
+        b.iter(|| black_box(later).duration_since(&black_box(earlier)));
+    });
+}
+
 criterion_group!(
     benches,
+    atomic_duration,
     binding_energy_1000,
     spectral_line_1000,
     electron_config_36,
