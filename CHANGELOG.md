@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - `AtomicInstant::duration_since` no longer overflows for instants spanning the full signed seconds range; nearby nanosecond differences retain their precision.
 - Update the locked benchmark dependency `crossbeam-epoch` to 0.9.20 to address [RUSTSEC-2026-0204](https://rustsec.org/advisories/RUSTSEC-2026-0204).
+- Use diagnostic collection assertions in tests so strict Clippy checks pass on newer Rust toolchains.
 
 ## [1.2.0]
 
