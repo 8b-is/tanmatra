@@ -5,6 +5,17 @@ All notable changes to tanmatra will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- `AtomicInstant::seconds_since` returns the exact signed-second difference as `i128`, for spans beyond the `f64` exact-integer range.
+
+### Fixed
+- `AtomicInstant::duration_since` no longer overflows for instants spanning the full signed seconds range; nearby nanosecond differences retain their precision.
+- Update the locked benchmark dependency `crossbeam-epoch` to 0.9.20 to address [RUSTSEC-2026-0204](https://rustsec.org/advisories/RUSTSEC-2026-0204).
+- Use diagnostic collection assertions in tests so strict Clippy checks pass on newer Rust toolchains.
+- Assert the extreme-range duration test by sign and relative bound instead of `f64` bit equality, and black-box the benchmark inputs outside the loop.
+
 ## [1.2.0]
 
 ### Added
