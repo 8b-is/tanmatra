@@ -364,16 +364,31 @@ impl AtomicInstant {
         tai_to_gps(self.tai_seconds())
     }
 
+    /// Returns the exact signed difference in whole seconds between this
+    /// instant and an earlier one, as `i128`.
+    ///
+    /// This never rounds: use it when comparing instants whose second-span
+    /// exceeds 2^53, where [`duration_since`](Self::duration_since) loses
+    /// integer exactness in its `f64` result.
+    #[must_use]
+    pub fn seconds_since(&self, earlier: &Self) -> i128 {
+        i128::from(self.seconds) - i128::from(earlier.seconds)
+    }
+
     /// Returns the duration in seconds between this instant and an earlier one.
     ///
     /// If `earlier` is actually later than `self`, the result will be negative.
+    ///
+    /// Precision: the result is `f64`, so whole-second spans beyond 2^53 lose
+    /// integer exactness. Use [`seconds_since`](Self::seconds_since) when an
+    /// exact signed-second difference is required.
     #[must_use]
     pub fn duration_since(&self, earlier: &Self) -> f64 {
         // Subtract before converting to preserve nearby instants at large epochs.
         // The full i64 instant range needs an i128 difference on overflow.
         let dsec = match self.seconds.checked_sub(earlier.seconds) {
             Some(seconds) => seconds as f64,
-            None => (i128::from(self.seconds) - i128::from(earlier.seconds)) as f64,
+            None => self.seconds_since(earlier) as f64,
         };
         let dnanos = self.nanos as i64 - earlier.nanos as i64;
         dsec + dnanos as f64 / NANOS_PER_SEC
@@ -786,14 +801,27 @@ mod tests {
     fn atomic_instant_duration_extreme_range() {
         let first = AtomicInstant::new(i64::MIN, 0);
         let last = AtomicInstant::new(i64::MAX, 0);
+        // The full i64 second range is not exactly representable in f64, so
+        // assert the sign and a tight relative bound, not bit equality.
         let span = (i128::from(i64::MAX) - i128::from(i64::MIN)) as f64;
-        assert_eq!(last.duration_since(&first), span);
-        assert_eq!(first.duration_since(&last), -span);
+        let forward = last.duration_since(&first);
+        assert!((forward - span).abs() <= span * f64::EPSILON);
+        assert_eq!(first.duration_since(&last), -forward);
+        // The exact helper carries the whole integer range without rounding.
+        assert_eq!(
+            last.seconds_since(&first),
+            i128::from(i64::MAX) - i128::from(i64::MIN)
+        );
+        assert_eq!(
+            first.seconds_since(&last),
+            i128::from(i64::MIN) - i128::from(i64::MAX)
+        );
+        // Nearby instants at the extremes keep their nanosecond difference.
         for second in [i64::MIN, i64::MAX] {
             let a = AtomicInstant::new(second, 1);
             let b = AtomicInstant::new(second, 2);
-            assert_eq!(b.duration_since(&a), 1e-9);
-            assert_eq!(a.duration_since(&b), -1e-9);
+            assert!((b.duration_since(&a) - 1e-9).abs() < 1e-18);
+            assert!((a.duration_since(&b) + 1e-9).abs() < 1e-18);
         }
     }
 
